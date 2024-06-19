@@ -1,13 +1,14 @@
-package com.redex.logisticaReparto.controller;
-
 import com.redex.logisticaReparto.model.*;
 import com.redex.logisticaReparto.dto.*;
 import com.redex.logisticaReparto.services.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 
 import java.time.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,10 +28,23 @@ public class GraspController {
     PaqueteService paqueteService;
     @Autowired
     PlanDeVueloService planDeVueloService;
+    @Autowired
+    PdfService pdfService;
+
 
     private Grasp grasp = new Grasp();
     private boolean esPrimeraSimulacion;
     private ZonedDateTime ultimaFechaConsulta;
+    private int num_ejecu_semanal;
+    private ArrayList<Envio> ultimoEnvioSemanal;
+
+    @GetMapping(value = "/PDF/generar",produces =  MediaType.APPLICATION_PDF_VALUE)
+    public ModelAndView generarPDF(){
+        Map<String, Object> model = new HashMap<>();
+        model.put("Envios", ultimoEnvioSemanal);
+        return new ModelAndView(pdfService,model);
+    }
+
 
 
     @GetMapping("/grasp/iniciar")
@@ -38,6 +52,8 @@ public class GraspController {
         ArrayList<Aeropuerto> aeropuertos = aeropuertoService.obtenerTodosAeropuertos();
         ArrayList<Continente> continentes = continenteService.obtenerTodosContinentes();
         ArrayList<Pais> paises = paisService.obtenerTodosPaises();
+        num_ejecu_semanal = 0;
+        ultimoEnvioSemanal = new ArrayList<>();
         grasp.setAeropuertos(aeropuertos);
         grasp.setContinentes(continentes);
         grasp.setPaises(paises);
@@ -161,6 +177,9 @@ public class GraspController {
         System.out.println(grasp.getEnvios().size());
         ArrayList<Envio> solucion = grasp.ejecutaGrasp(grasp.getAeropuertos(),grasp.getEnvios(),grasp.getPlanes());
 
+
+
+
         ArrayList<Envio> enviosSinRuta = grasp.buscarSinRuta(solucion);
         grasp.setEnvios(enviosSinRuta);
 
@@ -168,9 +187,10 @@ public class GraspController {
         long durationInMillis = endTime - startTime;
         double durationInSeconds = durationInMillis / 1000.0;
         System.out.println("Tiempo de ejecución: " + durationInSeconds + " segundos");
+
+        num_ejecu_semanal++;
+        if(num_ejecu_semanal == 1){
+            ultimoEnvioSemanal=solucion;
+        }
         return solucion;
     }
-
-
-
-}
